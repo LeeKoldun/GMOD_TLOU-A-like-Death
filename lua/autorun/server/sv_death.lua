@@ -1,10 +1,10 @@
 print("TLOU Death init SERVER")
 -- Imports --
 ---@class TlouConstants
-local consts = include("includes/constants.lua")
+local consts = include("tlou/constants.lua")
 
 ---@class TlouUtils
-local tlouUtils = include("includes/tlou_utils.lua")
+local tlouUtils = include("tlou/tlou_utils.lua")
 
 -- Setup --
 util.PrecacheSound("tlou_death_sound.mp3")
