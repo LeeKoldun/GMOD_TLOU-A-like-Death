@@ -62,7 +62,7 @@ local function DrawDeathScreen()
 end
 
 local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
-    if not tobool(GetConVar(consts.SV_CONVAR_ENABLED):GetBool()) then return end
+    if not GetConVar(consts.SV_CONVAR_ENABLED):GetBool() then return end
 
     local bonePos = (deathData.boneId and IsValid(body)) and body:GetBonePosition(deathData.boneId)
     local followPos = bonePos

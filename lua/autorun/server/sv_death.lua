@@ -32,7 +32,7 @@ util.AddNetworkString("TLOU_OnRagdollRecheck")
 ---@param inflictor Entity
 ---@param attacker Entity
 local function TlouPlayerDeath(ply, inflictor, attacker)
-    if not tobool(GetConVar(consts.SV_CONVAR_ENABLED):GetBool()) then return end
+    if not GetConVar(consts.SV_CONVAR_ENABLED):GetBool() then return end
 
     ply:Lock()
     timer.Create(ply:SteamID() .. "_respawn_timeout", GetConVar(consts.SV_CONVAR_OFFSET):GetFloat() + 2.5, 1, function()
@@ -48,6 +48,7 @@ end
 local function TlouPlayerSpawn(ply)
     if timer.Exists(ply:SteamID() .. "_respawn_timeout") then
         timer.Remove(ply:SteamID() .. "_respawn_timeout")
+        ply:UnLock()
     end
     
     net.Start("TLOU_OnPlayerSpawn")
@@ -72,7 +73,7 @@ hook.Add("PlayerSpawn", "TLOU_PlayerSpawn", TlouPlayerSpawn)
 hook.Add("PlayerSpawnAsSpectator", "TLOU_PlayerSpawn", TlouPlayerSpawn)
 
 hook.Add("PlayerDeathSound", "TLOU_MuteDefaultDeathSnd", function(ply)
-    if not tobool(GetConVar(consts.SV_CONVAR_ENABLED):GetBool()) 
+    if not GetConVar(consts.SV_CONVAR_ENABLED):GetBool() 
         or not tobool(ply:GetInfoNum(consts.CONVAR_VOICE_ENABLED, 0)) then return false end
 
     local body = ply:GetRagdollEntity()
