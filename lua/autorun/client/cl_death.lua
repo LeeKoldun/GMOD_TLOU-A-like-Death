@@ -81,7 +81,7 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
 
     local camDir = followPos - deathData.camPos
     local targetPos = followPos + (-camDir:GetNormalized() * 100)
-    local surfaceCheck = util.QuickTrace(followPos, targetPos - followPos, {body, "prop_ragdoll"})
+    local surfaceCheck = util.QuickTrace(followPos, targetPos - followPos, {body, deathData.attacker, "prop_ragdoll"})
     if surfaceCheck.Hit then
         targetPos = surfaceCheck.HitPos + surfaceCheck.HitNormal * 5
     end
