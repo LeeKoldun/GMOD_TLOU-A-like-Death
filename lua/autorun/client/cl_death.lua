@@ -2,10 +2,10 @@ print("TLOU Death init CLIENT")
 
 -- Imports --
 ---@class TlouConstants
-local consts = include("tlou/constants.lua")
+local consts = include("tlou_alike_death/constants.lua")
 
 ---@class TlouUtils
-local tlouUtils = include("tlou/tlou_utils.lua")
+local tlouUtils = include("tlou_alike_death/tlou_utils.lua")
 
 -- local vars --
 local locPly = LocalPlayer()
