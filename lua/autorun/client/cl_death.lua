@@ -15,8 +15,12 @@ local showTexts = false
 local customMessage = ""
 local textsAlpha = 0
 
----@type Entity
+---@type Entity | nil
 local body
+---@type Entity | nil
+local recheckedBody
+---@type Entity | nil
+local oldRecheckedBody
 
 ---@class DeathData
 ---@field boneId number | nil
@@ -28,13 +32,18 @@ local body
 local deathData = {}
 
 -- Functions --
-local function RemoveDeathScreen()
+local function ResetVars()
     showDS = false
     showTexts = false
     textsAlpha = 0
+end
 
+local function RemoveDeathScreen()
     hook.Remove("CalcView", "TLOU_DeathCam")
     hook.Remove("PostDrawHUD", "TLOU_DeathScreen")
+
+    oldRecheckedBody = recheckedBody
+    ResetVars()
 
     if not IsValid(locPly) then return end
     locPly:ConCommand("soundfade 0 0 [0.5 0]")
@@ -68,7 +77,7 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
     local followPos = bonePos
         or (deathData.attacker:IsValid() and deathData.attacker:EyePos())
         or locPly:WorldSpaceCenter()
-    
+
     local camDir = followPos - deathData.camPos
     deathData.camPos = LerpVector(1 * FrameTime(), deathData.camPos, followPos + (-camDir:GetNormalized() * 100))
     
@@ -96,27 +105,26 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
 end
 
 ---@param attacker Entity | NPC | Player
-local function SetupDeathScreen(attacker)
-    showDS = false
-    showTexts = false
-    textsAlpha = 0
-    customMessage = GetConVar(consts.SV_CONVAR_DEATH_MESSAGE):GetString()
+local function SetupDeathScreen(attacker)    
+    ResetVars()
 
-    body = locPly:GetRagdollEntity()
+    customMessage = GetConVar(consts.SV_CONVAR_DEATH_MESSAGE):GetString()
+    print(oldRecheckedBody, recheckedBody)
+    body = (oldRecheckedBody ~= recheckedBody and recheckedBody) or locPly:GetRagdollEntity()
     
     deathData.boneId = tlouUtils.GetBoneId(body)
     deathData.attacker = attacker
-
+    
     local followEntity = (deathData.boneId or not IsValid(attacker)) and locPly or attacker
-
+    
     deathData.camPos = tlouUtils.GetRandomCamFollowPos(followEntity, deathData.boneId ~= nil, {followEntity, locPly, "prop_ragdoll"})
     
     deathData.camAngle = nil
     deathData.fov = 100
     deathData.roll = math.Rand(-50, 50)
-
+    
     hook.Add("CalcView", "TLOU_DeathCam", CalculateDeathCam)
-    hook.Add("PostDrawHUD", "TLOU_DeathScreen", DrawDeathScreen)
+    hook.Add("PostDrawHUD", "TLOU_DeathScreen", DrawDeathScreen)    
 end
 
 -- Net receives --
@@ -124,8 +132,10 @@ net.Receive("TLOU_OnPlayerDeath", function()
     local attacker = net.ReadEntity()
     SetupDeathScreen(attacker)
 
+    if timer.Exists("CL_TLOU_DeathSequence") then return end
+    
     -- NextSpawn muste be: CONVAR_OFFSET + 2.5
-    timer.Simple(GetConVar(consts.SV_CONVAR_OFFSET):GetFloat(), function()
+    timer.Create("CL_TLOU_DeathSequence", GetConVar(consts.SV_CONVAR_OFFSET):GetFloat(), 1, function()
         if locPly:Alive() then return end
 
         surface.PlaySound("tlou_death_sound.mp3")
@@ -133,7 +143,7 @@ net.Receive("TLOU_OnPlayerDeath", function()
             if locPly:Alive() then return end
 
             showDS = true
-            locPly:ConCommand("soundfade 100 99999 [0, 0.5]")
+            locPly:ConCommand("soundfade 100 99999 [0, 0.4]")
 
             timer.Simple(1.5, function()
                 if locPly:Alive() then return end
@@ -146,11 +156,18 @@ end)
 
 -- Just to make sure that there is no modified ragdoll
 net.Receive("TLOU_OnRagdollRecheck", function()
-    if IsValid(body) then return end
+    local newRagdoll = net.ReadEntity()
+    local forceChange = net.ReadBool()
 
-    body = net.ReadEntity()
-    deathData.boneId = tlouUtils.GetBoneId(body)
+    if not newRagdoll:IsValid() then return end
+    if IsValid(body) and not forceChange then return end
+
+    body = newRagdoll
+    recheckedBody = newRagdoll
+    deathData.boneId = tlouUtils.GetBoneId(newRagdoll)
     deathData.camPos = tlouUtils.GetRandomCamFollowPos(locPly, deathData.boneId ~= nil, {locPly, "prop_ragdoll"})
+
+    print("Set new body: " .. tostring(body))
 end)
 
 net.Receive("TLOU_OnPlayerSpawn", RemoveDeathScreen)

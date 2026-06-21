@@ -55,19 +55,35 @@ local function TlouPlayerSpawn(ply)
     net.Send(ply)
 end
 
+---@param ply Player
+---@param ragdoll Entity | nil
+---@param forceChange boolean
+local function RagdollRecheck(ply, ragdoll, forceChange)
+    forceChange = forceChange or false
+    local body = ragdoll or ply:GetRagdollEntity()
+
+    if not body:IsValid() then return end
+    
+    net.Start("TLOU_OnRagdollRecheck")
+    net.WriteEntity(body)
+    net.WriteBool(forceChange)
+    net.Send(ply)
+    
+    print("Sent " .. tostring(body) .. " to " .. tostring(ply) .. "\nForce change: "  .. tostring(forceChange))
+end
+
 -- Hooks --
 hook.Add("PlayerDeath", "TLOU_Death", TlouPlayerDeath)
 hook.Add("PlayerSilentDeath", "TLOU_SilentDeath", TlouPlayerDeath)
 
--- Just to make sure that there is no modified ragdoll
-hook.Add("PostPlayerDeath", "TLOU_RagdollRecheck", function(ply)
-    local body = ply:GetRagdollEntity()
-    if not body:IsValid() then return end
-
-    net.Start("TLOU_OnRagdollRecheck")
-    net.WriteEntity(body)
-    net.Send(ply)
+-- ReAgdoll support --
+hook.Add("ReAgdoll_CreatePlayerRagdoll", "TLOU_ReAgdollDeath", function(victim, ragdoll)
+    print("ReAgdoll TLOU hook catch!")
+    RagdollRecheck(victim, ragdoll, true)
 end)
+
+-- Just to make sure that there is no modified ragdoll
+hook.Add("PostPlayerDeath", "TLOU_RagdollRecheck", RagdollRecheck)
 
 hook.Add("PlayerSpawn", "TLOU_PlayerSpawn", TlouPlayerSpawn)
 hook.Add("PlayerSpawnAsSpectator", "TLOU_PlayerSpawn", TlouPlayerSpawn)

@@ -131,7 +131,14 @@ local TlouUtils = {
         else
             return entity:EyePos() + direction
         end
-    end
+    end,
+
+    -- CheckHookListenerExists = function(hookName, listenerName)
+    --     local eventHook = hook.GetTable()[hookName]
+    --     if not eventHook then return false end
+
+    --     return eventHook[listenerName] ~= nil
+    -- end
 }
 
 return TlouUtils
