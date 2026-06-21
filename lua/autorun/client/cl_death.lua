@@ -73,13 +73,20 @@ end
 local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
     if not GetConVar(consts.SV_CONVAR_ENABLED):GetBool() then return end
 
+    ---@diagnostic disable-next-line: need-check-nil
     local bonePos = (deathData.boneId and IsValid(body)) and body:GetBonePosition(deathData.boneId)
     local followPos = bonePos
         or (deathData.attacker:IsValid() and deathData.attacker:EyePos())
         or locPly:WorldSpaceCenter()
 
     local camDir = followPos - deathData.camPos
-    deathData.camPos = LerpVector(1 * FrameTime(), deathData.camPos, followPos + (-camDir:GetNormalized() * 100))
+    local targetPos = followPos + (-camDir:GetNormalized() * 100)
+    local surfaceCheck = util.QuickTrace(followPos, targetPos - followPos, {body, "prop_ragdoll"})
+    if surfaceCheck.Hit then
+        targetPos = surfaceCheck.HitPos + surfaceCheck.HitNormal * 5
+    end
+
+    deathData.camPos = LerpVector(FrameTime(), deathData.camPos, targetPos)
     
     local camAngle = camDir:Angle()
     if not deathData.camAngle then
