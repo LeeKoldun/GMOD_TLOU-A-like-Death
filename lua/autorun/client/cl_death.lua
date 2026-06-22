@@ -134,6 +134,20 @@ local function SetupDeathScreen(attacker)
     hook.Add("PostDrawHUD", "TLOU_DeathScreen", DrawDeathScreen)    
 end
 
+---@param newRagdoll Entity
+---@param forceChange boolean
+local function RecheckBody(newRagdoll, forceChange)
+    if not newRagdoll:IsValid() then return end
+    if IsValid(body) and not forceChange then return end
+
+    body = newRagdoll
+    recheckedBody = newRagdoll
+    deathData.boneId = tlouUtils.GetBoneId(newRagdoll)
+    deathData.camPos = tlouUtils.GetRandomCamFollowPos(locPly, deathData.boneId ~= nil, {locPly, "prop_ragdoll"})
+
+    print("Set new body: " .. tostring(body))
+end
+
 -- Net receives --
 net.Receive("TLOU_OnPlayerDeath", function()
     local attacker = net.ReadEntity()
@@ -162,22 +176,24 @@ net.Receive("TLOU_OnPlayerDeath", function()
 end)
 
 -- Just to make sure that there is no modified ragdoll
-net.Receive("TLOU_OnRagdollRecheck", function()
-    local newRagdoll = net.ReadEntity()
-    local forceChange = net.ReadBool()
+net.Receive("TLOU_OnRagdollRecheck", function ()
+    local ragdoll = net.ReadEntity()
+    local force = net.ReadBool()
 
-    if not newRagdoll:IsValid() then return end
-    if IsValid(body) and not forceChange then return end
-
-    body = newRagdoll
-    recheckedBody = newRagdoll
-    deathData.boneId = tlouUtils.GetBoneId(newRagdoll)
-    deathData.camPos = tlouUtils.GetRandomCamFollowPos(locPly, deathData.boneId ~= nil, {locPly, "prop_ragdoll"})
-
-    print("Set new body: " .. tostring(body))
+    RecheckBody(ragdoll, force)
 end)
 
 net.Receive("TLOU_OnPlayerSpawn", RemoveDeathScreen)
+
+---------------------------------------
+-- Enhanced Death Animations support --
+---------------------------------------
+net.Receive("PlayerRag_StartDeathCam", function()
+    local ragId = net.ReadInt(32)
+    local ragdoll = Entity(ragId)
+
+    RecheckBody(ragdoll, true)
+end)
 
 -- Hooks --
 hook.Add("InitPostEntity", "TLOU_InitPly", function()

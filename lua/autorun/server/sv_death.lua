@@ -55,7 +55,9 @@ end
 hook.Add("PlayerDeath", "TLOU_Death", TlouPlayerDeath)
 hook.Add("PlayerSilentDeath", "TLOU_SilentDeath", TlouPlayerDeath)
 
+----------------------
 -- ReAgdoll support --
+----------------------
 hook.Add("ReAgdoll_CreatePlayerRagdoll", "TLOU_ReAgdollDeath", function(victim, ragdoll)
     print("ReAgdoll TLOU hook catch!")
     RagdollRecheck(victim, ragdoll, true)
