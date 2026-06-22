@@ -46,6 +46,8 @@ local DeathVoice = {
     }
 }
 
+local LATENCY_CHECKER_PREFIX = "TLOU_LatencyChecker_"
+
 ---@class TlouUtils
 local TlouUtils = {
     GetBoneId = function(body)
@@ -139,6 +141,30 @@ local TlouUtils = {
 
     --     return eventHook[listenerName] ~= nil
     -- end
+
+    ---@param validator fun(): boolean
+    ---@param callback fun()
+    ---@param identifier string
+    ---@param timeout number | nil
+    SetupLatencyChecker = function(validator, callback, identifier, timeout)
+        timeout = timeout or 1
+        local startTime = RealTime()
+        local ident = LATENCY_CHECKER_PREFIX .. identifier
+
+        if hook.GetTable()["Think"][ident] then return end
+
+        hook.Add("Think", ident, function()
+            if RealTime() - startTime > 1 then
+                hook.Remove("Think", ident)
+                return
+            end
+
+            if not validator() then return end
+
+            callback()
+            hook.Remove("Think", ident)
+        end)
+    end
 }
 
 return TlouUtils

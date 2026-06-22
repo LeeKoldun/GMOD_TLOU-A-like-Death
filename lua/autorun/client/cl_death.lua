@@ -81,7 +81,7 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
 
     local camDir = followPos - deathData.camPos
     local targetPos = followPos + (-camDir:GetNormalized() * 100)
-    local surfaceCheck = util.QuickTrace(followPos, targetPos - followPos, {body, deathData.attacker, "prop_ragdoll"})
+    local surfaceCheck = util.QuickTrace(followPos, targetPos - followPos, {body, recheckedBody, deathData.attacker, "prop_ragdoll"})
     if surfaceCheck.Hit then
         targetPos = surfaceCheck.HitPos + surfaceCheck.HitNormal * 5
     end
@@ -111,27 +111,36 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
     return view
 end
 
+local function SetBody()
+    body = (oldRecheckedBody ~= recheckedBody) and recheckedBody or locPly:GetRagdollEntity()
+    deathData.boneId = tlouUtils.GetBoneId(body)
+end
+
 ---@param attacker Entity | NPC | Player
-local function SetupDeathScreen(attacker)    
+local function SetupDeathScreen(attacker)
     ResetVars()
 
     customMessage = GetConVar(consts.SV_CONVAR_DEATH_MESSAGE):GetString()
     print(oldRecheckedBody, recheckedBody)
-    body = (oldRecheckedBody ~= recheckedBody and recheckedBody) or locPly:GetRagdollEntity()
-    
-    deathData.boneId = tlouUtils.GetBoneId(body)
+
     deathData.attacker = attacker
-    
     local followEntity = (deathData.boneId or not IsValid(attacker)) and locPly or attacker
-    
-    deathData.camPos = tlouUtils.GetRandomCamFollowPos(followEntity, deathData.boneId ~= nil, {followEntity, locPly, "prop_ragdoll"})
+    deathData.camPos = tlouUtils.GetRandomCamFollowPos(followEntity, deathData.boneId ~= nil, {locPly, body, recheckedBody, "prop_ragdoll"})
+
+    if game.SinglePlayer() then
+        SetBody()
+    else
+        tlouUtils.SetupLatencyChecker(function ()
+            return locPly:GetRagdollEntity():IsValid()
+        end, SetBody, "GetDefaultRag")
+    end
     
     deathData.camAngle = nil
     deathData.fov = 100
     deathData.roll = math.Rand(-50, 50)
     
     hook.Add("CalcView", "TLOU_DeathCam", CalculateDeathCam)
-    hook.Add("PostDrawHUD", "TLOU_DeathScreen", DrawDeathScreen)    
+    hook.Add("PostDrawHUD", "TLOU_DeathScreen", DrawDeathScreen)
 end
 
 ---@param newRagdoll Entity
@@ -143,7 +152,7 @@ local function RecheckBody(newRagdoll, forceChange)
     body = newRagdoll
     recheckedBody = newRagdoll
     deathData.boneId = tlouUtils.GetBoneId(newRagdoll)
-    deathData.camPos = tlouUtils.GetRandomCamFollowPos(locPly, deathData.boneId ~= nil, {locPly, "prop_ragdoll"})
+    -- deathData.camPos = tlouUtils.GetRandomCamFollowPos(locPly, deathData.boneId ~= nil, {locPly, "prop_ragdoll"})
 
     print("Set new body: " .. tostring(body))
 end
@@ -177,23 +186,21 @@ end)
 
 -- Just to make sure that there is no modified ragdoll
 net.Receive("TLOU_OnRagdollRecheck", function ()
-    local ragdoll = net.ReadEntity()
+    local ragId = net.ReadUInt(16)
     local force = net.ReadBool()
 
-    RecheckBody(ragdoll, force)
+    if game.SinglePlayer() then
+        RecheckBody(Entity(ragId), force)
+    else
+        tlouUtils.SetupLatencyChecker(function ()
+            return Entity(ragId):IsValid()
+        end, function ()
+            RecheckBody(Entity(ragId), force)
+        end, "BasicRagRecheck")
+    end
 end)
 
 net.Receive("TLOU_OnPlayerSpawn", RemoveDeathScreen)
-
----------------------------------------
--- Enhanced Death Animations support --
----------------------------------------
-net.Receive("PlayerRag_StartDeathCam", function()
-    local ragId = net.ReadInt(32)
-    local ragdoll = Entity(ragId)
-
-    RecheckBody(ragdoll, true)
-end)
 
 -- Hooks --
 hook.Add("InitPostEntity", "TLOU_InitPly", function()
@@ -224,4 +231,25 @@ Leave empty to use default
         voiceSelect:AddChoice("Combine", 3)
         voiceSelect:AddChoice("Zombie", 4)
     end)
+end)
+
+
+------------------------
+-- Addon support zone --
+------------------------
+
+-- Enhanced Death Animations support --
+net.Receive("PlayerRag_StartDeathCam", function()
+    local ragId = net.ReadInt(32)
+
+    if game.SinglePlayer() then
+        local ragdoll = Entity(ragId)
+        RecheckBody(ragdoll, true)
+    else
+        tlouUtils.SetupLatencyChecker(function ()
+            return IsValid(Entity(ragId))
+        end, function ()
+            RecheckBody(Entity(ragId), true)
+        end, "EDA_Support")
+    end
 end)
