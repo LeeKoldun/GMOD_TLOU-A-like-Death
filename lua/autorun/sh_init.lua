@@ -23,6 +23,8 @@ CreateClientConVar(consts.CONVAR_VOICETYPE, "0", true, true, [[
     3 - combine
     4 - zombie]], 0, 4)
 
+if CLIENT then return end
+
 -- Net Strings --
 util.AddNetworkString("TLOU_OnPlayerDeath")
 util.AddNetworkString("TLOU_OnPlayerSpawn")
