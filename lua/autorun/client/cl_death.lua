@@ -1,9 +1,6 @@
 print("TLOU Death init CLIENT")
 
 -- Imports --
----@class TlouConstants
-local consts = include("tlou_alike_death/constants.lua")
-
 ---@class TlouUtils
 local tlouUtils = include("tlou_alike_death/tlou_utils.lua")
 
@@ -32,6 +29,9 @@ local oldRecheckedBody
 local deathData = {}
 
 -- Functions --
+
+local CompatibilityCheck -- Moved to Addon support zone 
+
 local function ResetVars()
     showDS = false
     showTexts = false
@@ -43,7 +43,10 @@ local function RemoveDeathScreen()
     hook.Remove("PostDrawHUD", "TLOU_DeathScreen")
 
     oldRecheckedBody = recheckedBody
+    recheckedBody = nil
+    body = nil
     ResetVars()
+    CompatibilityCheck(true)
 
     if not IsValid(locPly) then return end
     locPly:ConCommand("soundfade 0 0 [0.5 0]")
@@ -71,7 +74,7 @@ local function DrawDeathScreen()
 end
 
 local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
-    if not GetConVar(consts.SV_CONVAR_ENABLED):GetBool() then return end
+    if not TD_CVAR_ENABLED:GetBool() then return end
 
     ---@diagnostic disable-next-line: need-check-nil
     local bonePos = (deathData.boneId and IsValid(body)) and body:GetBonePosition(deathData.boneId)
@@ -120,7 +123,7 @@ end
 local function SetupDeathScreen(attacker)
     ResetVars()
 
-    customMessage = GetConVar(consts.SV_CONVAR_DEATH_MESSAGE):GetString()
+    customMessage = TD_CVAR_DEATHMESSAGE:GetString()
     print(oldRecheckedBody, recheckedBody)
 
     deathData.attacker = attacker
@@ -141,6 +144,7 @@ local function SetupDeathScreen(attacker)
     
     hook.Add("CalcView", "TLOU_DeathCam", CalculateDeathCam)
     hook.Add("PostDrawHUD", "TLOU_DeathScreen", DrawDeathScreen)
+    CompatibilityCheck(false)
 end
 
 ---@param newRagdoll Entity
@@ -152,9 +156,8 @@ local function RecheckBody(newRagdoll, forceChange)
     body = newRagdoll
     recheckedBody = newRagdoll
     deathData.boneId = tlouUtils.GetBoneId(newRagdoll)
-    -- deathData.camPos = tlouUtils.GetRandomCamFollowPos(locPly, deathData.boneId ~= nil, {locPly, "prop_ragdoll"})
 
-    print("Set new body: " .. tostring(body))
+    print("Set new body: " .. tostring(body) .. "\nForce changed: " .. tostring(forceChange))
 end
 
 -- Net receives --
@@ -165,7 +168,7 @@ net.Receive("TLOU_OnPlayerDeath", function()
     if timer.Exists("CL_TLOU_DeathSequence") then return end
     
     -- NextSpawn muste be: CONVAR_OFFSET + 2.5
-    timer.Create("CL_TLOU_DeathSequence", GetConVar(consts.SV_CONVAR_OFFSET):GetFloat(), 1, function()
+    timer.Create("CL_TLOU_DeathSequence", TD_CVAR_DEATHOFFSET:GetFloat(), 1, function()
         if locPly:Alive() then return end
 
         surface.PlaySound("tlou_death_sound.mp3")
@@ -213,17 +216,17 @@ hook.Add("PopulateToolMenu", "TLOU_MenuSetup", function()
     ---@diagnostic disable-next-line: deprecated
     spawnmenu.AddToolMenuOption("Options", "Player", "tlou_options", "TLOU Death", nil, nil, function(pnl)
         pnl:ControlHelp("\n\nSERVER")
-        pnl:CheckBox("Enable death", consts.SV_CONVAR_ENABLED)
-        pnl:NumSlider("Death offset (Def: 1)", consts.SV_CONVAR_OFFSET, 0.5, 2, 1)
-        pnl:TextEntry("Death message", consts.SV_CONVAR_DEATH_MESSAGE)
+        pnl:CheckBox("Enable death", TD_CVAR_ENABLED:GetName())
+        pnl:NumSlider("Death offset (Def: 1)", TD_CVAR_DEATHOFFSET:GetName(), 0.5, 2, 1)
+        pnl:TextEntry("Death message", TD_CVAR_DEATHMESSAGE:GetName())
         pnl:ControlHelp([[
 Leave empty to use default
     - SPACEs also count as custom message
         ]])
 
         pnl:ControlHelp("\nCLIENT")
-        pnl:CheckBox("Should use death voice", consts.CONVAR_VOICE_ENABLED)
-        local voiceSelect = pnl:ComboBox("Voice type", consts.CONVAR_VOICETYPE)
+        pnl:CheckBox("Should use death voice", TD_CLCVAR_VOICE_ENABLED:GetName())
+        local voiceSelect = pnl:ComboBox("Voice type", TD_CLCVAR_VOICETYPE:GetName())
         voiceSelect:SetSortItems(false)
         voiceSelect:AddChoice("Auto", 0)
         voiceSelect:AddChoice("Male", 1)
@@ -237,6 +240,34 @@ end)
 ------------------------
 -- Addon support zone --
 ------------------------
+
+local zcityRenderScene
+local zcityCalcView
+
+---@type fun(onScreenRemove: boolean)
+CompatibilityCheck = function(onScreenRemove)
+    local hooks = hook.GetTable()
+    if onScreenRemove then
+        -- Кто придумывал названия этих хуков 🥀
+        if zcityRenderScene then
+            hook.Add("RenderScene", "jopa", zcityRenderScene)
+            zcityRenderScene = nil
+        end
+        if zcityCalcView then
+            hook.Add("CalcView", "homigrad-view", zcityCalcView)
+            zcityCalcView = nil
+        end
+    else
+        if tlouUtils.CheckHookListenerExists("RenderScene", "jopa") then
+            zcityRenderScene = hooks["RenderScene"]["jopa"]
+            hook.Remove("RenderScene", "jopa")
+        end
+        if tlouUtils.CheckHookListenerExists("CalcView", "homigrad-view") then
+            zcityCalcView = hooks["CalcView"]["homigrad-view"]
+            hook.Remove("CalcView", "homigrad-view")
+        end
+    end
+end
 
 -- Enhanced Death Animations support --
 net.Receive("PlayerRag_StartDeathCam", function()

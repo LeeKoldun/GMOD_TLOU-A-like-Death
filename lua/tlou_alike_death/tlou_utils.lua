@@ -1,6 +1,3 @@
----@class TlouConstants
-local constants = include("constants.lua")
-
 local PreferedBones = {
     "ValveBiped.Bip01_Head1",
     "ValveBiped.Bip01_Neck1",
@@ -64,7 +61,7 @@ local TlouUtils = {
 
     ---@param ply Player
     FindVoiceType = function (model, ply)
-        local voIndex = ply:GetInfoNum(constants.CONVAR_VOICETYPE, 0)
+        local voIndex = ply:GetInfoNum(TD_CLCVAR_VOICETYPE:GetName(), 0)
         if voIndex ~= 0 then
             if voIndex == 1 then return "male" end
             if voIndex == 2 then return "female" end
@@ -135,12 +132,12 @@ local TlouUtils = {
         end
     end,
 
-    -- CheckHookListenerExists = function(hookName, listenerName)
-    --     local eventHook = hook.GetTable()[hookName]
-    --     if not eventHook then return false end
+    CheckHookListenerExists = function(hookName, listenerName)
+        local eventHook = hook.GetTable()[hookName]
+        if not eventHook then return false end
 
-    --     return eventHook[listenerName] ~= nil
-    -- end
+        return eventHook[listenerName] ~= nil
+    end,
 
     ---@param validator fun(): boolean
     ---@param callback fun()

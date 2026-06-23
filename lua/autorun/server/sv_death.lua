@@ -1,8 +1,5 @@
 print("TLOU Death init SERVER")
 -- Imports --
----@class TlouConstants
-local consts = include("tlou_alike_death/constants.lua")
-
 ---@class TlouUtils
 local tlouUtils = include("tlou_alike_death/tlou_utils.lua")
 
@@ -11,10 +8,10 @@ local tlouUtils = include("tlou_alike_death/tlou_utils.lua")
 ---@param inflictor Entity
 ---@param attacker Entity
 local function TlouPlayerDeath(ply, inflictor, attacker)
-    if not GetConVar(consts.SV_CONVAR_ENABLED):GetBool() then return end
+    if not TD_CVAR_ENABLED:GetBool() then return end
 
     ply:Lock()
-    timer.Create(ply:SteamID() .. "_respawn_timeout", GetConVar(consts.SV_CONVAR_OFFSET):GetFloat() + 2.5, 1, function()
+    timer.Create(ply:SteamID() .. "_respawn_timeout", TD_CVAR_DEATHOFFSET:GetFloat() + 2.5, 1, function()
         ply:UnLock()
     end)
     
@@ -38,6 +35,8 @@ end
 ---@param ragdoll Entity | nil
 ---@param forceChange boolean
 local function RagdollRecheck(ply, ragdoll, forceChange)
+    if not TD_CVAR_ENABLED:GetBool() then return end
+    
     forceChange = forceChange or false
     local body = ragdoll or ply:GetRagdollEntity()
 
@@ -63,8 +62,8 @@ hook.Add("PlayerSpawn", "TLOU_PlayerSpawn", TlouPlayerSpawn)
 hook.Add("PlayerSpawnAsSpectator", "TLOU_PlayerSpawn", TlouPlayerSpawn)
 
 hook.Add("PlayerDeathSound", "TLOU_MuteDefaultDeathSnd", function(ply)
-    if not GetConVar(consts.SV_CONVAR_ENABLED):GetBool() 
-        or not tobool(ply:GetInfoNum(consts.CONVAR_VOICE_ENABLED, 0)) then return false end
+    if not TD_CVAR_ENABLED:GetBool() 
+        or not tobool(ply:GetInfoNum(TD_CLCVAR_VOICE_ENABLED:GetName(), 0)) then return false end
 
     local body = ply:GetRagdollEntity()
     if body:IsValid() then
