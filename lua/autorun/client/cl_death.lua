@@ -217,7 +217,7 @@ hook.Add("PopulateToolMenu", "TLOU_MenuSetup", function()
     spawnmenu.AddToolMenuOption("Options", "Player", "tlou_options", "TLOU Death", nil, nil, function(pnl)
         pnl:ControlHelp("\n\nSERVER")
         pnl:CheckBox("Enable death", TD_CVAR_ENABLED:GetName())
-        pnl:NumSlider("Death offset (Def: 1)", TD_CVAR_DEATHOFFSET:GetName(), 0.5, 2, 1)
+        pnl:NumSlider("Death offset (Def: 1)", TD_CVAR_DEATHOFFSET:GetName(), 0.1, 5, 1)
         pnl:TextEntry("Death message", TD_CVAR_DEATHMESSAGE:GetName())
         pnl:ControlHelp([[
 Leave empty to use default
