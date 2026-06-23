@@ -241,6 +241,9 @@ end)
 -- Addon support zone --
 ------------------------
 
+-- Shootout to "cool death effect" devs!
+-- https://steamcommunity.com/sharedfiles/filedetails/?id=3746609320
+-- Thank you so much for the found hooks for ZCity :^)
 local zcityRenderScene
 local zcityCalcView
 
