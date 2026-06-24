@@ -80,7 +80,7 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
     ---@diagnostic disable-next-line: need-check-nil
     local bonePos = (deathData.boneId and IsValid(body)) and body:GetBonePosition(deathData.boneId)
     local followPos = bonePos
-        or (deathData.attacker:IsValid() and deathData.attacker:EyePos())
+        or (IsValid(deathData.attacker) and deathData.attacker:EyePos())
         or locPly:WorldSpaceCenter()
 
     local camDir = followPos - deathData.camPos
@@ -133,13 +133,17 @@ local function SetupDeathScreen(attacker)
 
     local followEntity = (deathData.boneId or not IsValid(attacker)) and locPly
         or attacker
+
     ---@diagnostic disable-next-line: param-type-mismatch
     deathData.camPos = tlouUtils.GetRandomCamFollowPos(followEntity, deathData.boneId ~= nil,
         {
             "prop_ragdoll",
             locPly:GetClass(),
-            body and body:GetClass(),
-            recheckedBody and recheckedBody:GetClass()
+            
+            ---@diagnostic disable-next-line: need-check-nil
+            IsValid(body) and body:GetClass() or nil,
+            ---@diagnostic disable-next-line: need-check-nil
+            IsValid(recheckedBody) and recheckedBody:GetClass() or nil
         }
     )
 
