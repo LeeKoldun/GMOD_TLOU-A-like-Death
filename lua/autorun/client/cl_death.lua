@@ -21,7 +21,7 @@ local oldRecheckedBody
 
 ---@class DeathData
 ---@field boneId number | nil
----@field attacker Entity
+---@field attacker Entity | nil
 ---@field camPos Vector
 ---@field camAngle Angle | nil
 ---@field fov number
@@ -45,6 +45,7 @@ local function RemoveDeathScreen()
     oldRecheckedBody = recheckedBody
     recheckedBody = nil
     body = nil
+    deathData.attacker = nil
     ResetVars()
     CompatibilityCheck(true)
 
@@ -119,16 +120,28 @@ local function SetBody()
     deathData.boneId = tlouUtils.GetBoneId(body)
 end
 
----@param attacker Entity | NPC | Player
+---@param attacker Entity | NPC | Player | nil
 local function SetupDeathScreen(attacker)
     ResetVars()
 
     customMessage = TD_CVAR_DEATHMESSAGE:GetString()
     print(oldRecheckedBody, recheckedBody)
 
+    local shouldFollowAttacker = TD_CLCVAR_FOLLOW_ATTACKER:GetBool()
+    attacker = shouldFollowAttacker and attacker or nil
     deathData.attacker = attacker
-    local followEntity = (deathData.boneId or not IsValid(attacker)) and locPly or attacker
-    deathData.camPos = tlouUtils.GetRandomCamFollowPos(followEntity, deathData.boneId ~= nil, {locPly, body, recheckedBody, "prop_ragdoll"})
+
+    local followEntity = (deathData.boneId or not IsValid(attacker)) and locPly
+        or attacker
+    ---@diagnostic disable-next-line: param-type-mismatch
+    deathData.camPos = tlouUtils.GetRandomCamFollowPos(followEntity, deathData.boneId ~= nil,
+        {
+            "prop_ragdoll",
+            locPly:GetClass(),
+            body and body:GetClass(),
+            recheckedBody and recheckedBody:GetClass()
+        }
+    )
 
     if game.SinglePlayer() then
         SetBody()
@@ -215,7 +228,8 @@ hook.Add("PopulateToolMenu", "TLOU_MenuSetup", function()
     ---@param pnl Panel | DForm
     ---@diagnostic disable-next-line: deprecated
     spawnmenu.AddToolMenuOption("Options", "Player", "tlou_options", "TLOU Death", nil, nil, function(pnl)
-        pnl:ControlHelp("\n\nSERVER")
+        -- Server
+        pnl:ControlHelp("\nSERVER")
         pnl:CheckBox("Enable death", TD_CVAR_ENABLED:GetName())
         pnl:NumSlider("Death offset (Def: 1)", TD_CVAR_DEATHOFFSET:GetName(), 0.1, 5, 1)
         pnl:TextEntry("Death message", TD_CVAR_DEATHMESSAGE:GetName())
@@ -224,7 +238,12 @@ Leave empty to use default
     - SPACEs also count as custom message
         ]])
 
+        -- Client
         pnl:ControlHelp("\nCLIENT")
+        
+        pnl:CheckBox("Should follow attacker", TD_CLCVAR_FOLLOW_ATTACKER:GetName())
+        pnl:ControlHelp("Should cam follow attacker if player's ragdoll is invalid")
+
         pnl:CheckBox("Should use death voice", TD_CLCVAR_VOICE_ENABLED:GetName())
         local voiceSelect = pnl:ComboBox("Voice type", TD_CLCVAR_VOICETYPE:GetName())
         voiceSelect:SetSortItems(false)

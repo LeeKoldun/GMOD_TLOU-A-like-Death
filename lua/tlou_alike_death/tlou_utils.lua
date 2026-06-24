@@ -120,16 +120,22 @@ local TlouUtils = {
         local lookDir = entity.GetAimVector and entity:GetAimVector()
             or entity:GetForward()
         local angle = lookDir:Angle()
-        angle.p = math.Rand(-45, followsPlayer and 45 or 0)
+        angle.p = math.Rand(-45, followsPlayer and 15 or 0)
         angle.y = angle.y + math.Rand(-45, 45)
+        -- print(angle)
 
         local direction = angle:Forward() * (entity:IsPlayer() and 50 or 100)
-        local trace = util.QuickTrace(entity:EyePos(), direction, filter)
+        local entPos = entity:WorldSpaceCenter()
+
+        local trace = util.QuickTrace(entPos, direction, filter)
+        print("Hit trace: " .. tostring(trace.Hit), trace.Entity)
         if trace.Hit then
             return trace.HitPos + trace.HitNormal * 5
         else
-            return entity:EyePos() + direction
+            return entPos + direction
         end
+
+        -- return entity:WorldSpaceCenter()
     end,
 
     CheckHookListenerExists = function(hookName, listenerName)
