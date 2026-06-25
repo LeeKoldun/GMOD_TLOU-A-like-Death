@@ -270,10 +270,15 @@ end)
 local zcityRenderScene
 local zcityCalcView
 
+-- RagDeath V2
+local ragDeathCalcView
+
 ---@type fun(onScreenRemove: boolean)
 CompatibilityCheck = function(onScreenRemove)
     local hooks = hook.GetTable()
     if onScreenRemove then
+
+        -- ZCity stuff
         -- Кто придумывал названия этих хуков 🥀
         if zcityRenderScene then
             hook.Add("RenderScene", "jopa", zcityRenderScene)
@@ -283,7 +288,14 @@ CompatibilityCheck = function(onScreenRemove)
             hook.Add("CalcView", "homigrad-view", zcityCalcView)
             zcityCalcView = nil
         end
+        if ragDeathCalcView then
+            hook.Add("CalcView", "RagDeath_Cam", ragDeathCalcView)
+            ragDeathCalcView = nil
+        end
+
     else
+
+        -- ZCity stuff
         if tlouUtils.CheckHookListenerExists("RenderScene", "jopa") then
             zcityRenderScene = hooks["RenderScene"]["jopa"]
             hook.Remove("RenderScene", "jopa")
@@ -292,6 +304,13 @@ CompatibilityCheck = function(onScreenRemove)
             zcityCalcView = hooks["CalcView"]["homigrad-view"]
             hook.Remove("CalcView", "homigrad-view")
         end
+
+        -- RagDeath V2 stuff
+        if tlouUtils.CheckHookListenerExists("CalcView", "RagDeath_Cam") then
+            ragDeathCalcView = hooks["CalcView"]["RagDeath_Cam"]
+            hook.Remove("CalcView", "RagDeath_Cam")
+        end
+
     end
 end
 
@@ -308,5 +327,26 @@ net.Receive("PlayerRag_StartDeathCam", function()
         end, function ()
             RecheckBody(Entity(ragId), true)
         end, "EDA_Support")
+    end
+end)
+
+-- RagDeath V2 support --
+net.Receive("ragdeath_client", function ()
+    local entIndex = net.ReadInt(32)
+    local plyIndex = net.ReadInt(32)
+
+    local owner = Entity(plyIndex)
+
+    if owner ~= locPly then return end
+
+    if game.SinglePlayer() then
+        local ragdoll = Entity(entIndex)
+        RecheckBody(ragdoll, true)
+    else
+        tlouUtils.SetupLatencyChecker(function ()
+            return IsValid(Entity(entIndex))
+        end, function ()
+            RecheckBody(Entity(entIndex), true)
+        end, "RagDeath_Support")
     end
 end)
