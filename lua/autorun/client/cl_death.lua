@@ -9,6 +9,7 @@ local locPly = LocalPlayer()
 
 local showDS = false
 local showTexts = false
+local trackFace = false
 local customMessage = ""
 local textsAlpha = 0
 
@@ -77,14 +78,32 @@ end
 local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
     if not TD_CVAR_ENABLED:GetBool() then return end
 
-    ---@diagnostic disable-next-line: need-check-nil
-    local bonePos = (deathData.boneId and IsValid(body)) and body:GetBonePosition(deathData.boneId)
+    ---@type Vector | nil, Angle | nil
+    local bonePos, boneAngle
+    if deathData.boneId and IsValid(body) then
+        ---@diagnostic disable-next-line: need-check-nil
+        bonePos, boneAngle = body:GetBonePosition(deathData.boneId)
+    end
+
     local followPos = bonePos
         or (IsValid(deathData.attacker) and deathData.attacker:EyePos())
         or locPly:WorldSpaceCenter()
 
     local camDir = followPos - deathData.camPos
-    local targetPos = followPos + (-camDir:GetNormalized() * 100)
+
+    ---@type Vector
+    local targetPos
+    if trackFace and boneAngle then
+        local boneLookDir = boneAngle:Right()
+        if boneLookDir.z < 0 then
+            boneLookDir.z = -camDir:GetNormalized().z
+        end
+        
+        targetPos = followPos + boneLookDir * 100
+    else
+        targetPos = followPos + (-camDir:GetNormalized() * 100)
+    end
+
     local surfaceCheck = util.QuickTrace(followPos, targetPos - followPos, {body, recheckedBody, deathData.attacker, "prop_ragdoll"})
     if surfaceCheck.Hit then
         targetPos = surfaceCheck.HitPos + surfaceCheck.HitNormal * 5
@@ -124,6 +143,7 @@ end
 local function SetupDeathScreen(attacker)
     ResetVars()
 
+    trackFace = TD_CLCVAR_FACE_PLAYER:GetBool()
     customMessage = TD_CVAR_DEATHMESSAGE:GetString()
     print(oldRecheckedBody, recheckedBody)
 
@@ -247,6 +267,9 @@ Leave empty to use default
         
         pnl:CheckBox("Should follow attacker", TD_CLCVAR_FOLLOW_ATTACKER:GetName())
         pnl:ControlHelp("Should cam follow attacker if player's ragdoll is invalid")
+
+        pnl:CheckBox("Try face player", TD_CLCVAR_FACE_PLAYER:GetName())
+        pnl:ControlHelp("Should cam try to face player on death\nWARNING: camera goofiness possibility")
 
         pnl:CheckBox("Should use death voice", TD_CLCVAR_VOICE_ENABLED:GetName())
         local voiceSelect = pnl:ComboBox("Voice type", TD_CLCVAR_VOICETYPE:GetName())
