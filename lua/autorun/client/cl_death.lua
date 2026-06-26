@@ -9,9 +9,15 @@ local locPly = LocalPlayer()
 
 local showDS = false
 local showTexts = false
-local trackFace = false
-local customMessage = ""
 local textsAlpha = 0
+
+---@class Config
+local config = {
+    shouldFollowAttacker = false,
+    trackFace = false,
+    customMessage = "",
+    font = "DermaLarge",
+}
 
 ---@type Entity | nil
 local body
@@ -64,11 +70,11 @@ local function DrawDeathScreen()
 
     textsAlpha = math.Clamp(textsAlpha + (FrameTime() * 20), 0, 200)
     draw.SimpleText(
-        (customMessage ~= "" and customMessage) or "Press SPACE to respawn...", 
-        "DermaLarge", ScrW() / 2, ScrH() / 2, Color(255, 255, 255, textsAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        (config.customMessage ~= "" and config.customMessage) or "Press SPACE to respawn...", 
+        config.font, ScrW() / 2, ScrH() / 2, Color(255, 255, 255, textsAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     draw.SimpleText(
         "Press CTRL to remove the death screen", 
-        "DermaLarge", ScrW() / 2, ScrH() * 0.95, Color(150, 150, 150, textsAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        config.font, ScrW() / 2, ScrH() * 0.95, Color(150, 150, 150, textsAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 
     if input.IsButtonDown(KEY_LCONTROL) then
         RemoveDeathScreen()
@@ -93,7 +99,7 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
 
     ---@type Vector
     local targetPos
-    if trackFace and boneAngle then
+    if config.trackFace and boneAngle then
         local boneLookDir = boneAngle:Right()
         if boneLookDir.z < 0 then
             boneLookDir.z = -camDir:GetNormalized().z
@@ -143,12 +149,22 @@ end
 local function SetupDeathScreen(attacker)
     ResetVars()
 
-    trackFace = TD_CLCVAR_FACE_PLAYER:GetBool()
-    customMessage = TD_CVAR_DEATHMESSAGE:GetString()
+    config.trackFace = TD_CLCVAR_FACE_PLAYER:GetBool()
+    config.customMessage = TD_CVAR_DEATHMESSAGE:GetString()
+    config.shouldFollowAttacker = TD_CLCVAR_FOLLOW_ATTACKER:GetBool()
+
+    local fontIndex = TD_CLCVAR_FONT:GetInt()
+    if fontIndex == 1 then
+        config.font = "DermaLarger"
+    elseif fontIndex == 2 then
+        config.font = "DermaLargest"
+    else
+        config.font = "DermaLarge"
+    end
+
     print(oldRecheckedBody, recheckedBody)
 
-    local shouldFollowAttacker = TD_CLCVAR_FOLLOW_ATTACKER:GetBool()
-    attacker = shouldFollowAttacker and attacker or nil
+    attacker = config.shouldFollowAttacker and attacker or nil
     deathData.attacker = attacker
 
     local followEntity = (deathData.boneId or not IsValid(attacker)) and locPly
@@ -270,6 +286,13 @@ Leave empty to use default
 
         pnl:CheckBox("Try face player", TD_CLCVAR_FACE_PLAYER:GetName())
         pnl:ControlHelp("Should cam try to face player on death\nWARNING: camera goofiness possibility")
+
+        local fontSelect = pnl:ComboBox("Message font size", TD_CLCVAR_FONT:GetName())
+        fontSelect:SetSortItems(false)
+        fontSelect:AddChoice("Default", 0)
+        fontSelect:AddChoice("Large", 1)
+        fontSelect:AddChoice("Largest", 2)
+        pnl:ControlHelp("Change if the death message appear do be small")
 
         pnl:CheckBox("Should use death voice", TD_CLCVAR_VOICE_ENABLED:GetName())
         local voiceSelect = pnl:ComboBox("Voice type", TD_CLCVAR_VOICETYPE:GetName())
