@@ -321,6 +321,7 @@ Leave empty to use default
     end)
 end)
 
+
 ------------------------
 -- Addon support zone --
 ------------------------
@@ -375,39 +376,41 @@ CompatibilityCheck = function(onScreenRemove)
     end
 end
 
--- Enhanced Death Animations support --
-net.Receive("PlayerRag_StartDeathCam", function()
-    local ragId = net.ReadInt(32)
-
-    if game.SinglePlayer() then
-        local ragdoll = Entity(ragId)
-        RecheckBody(ragdoll, true)
-    else
-        tlouUtils.SetupLatencyChecker(function ()
-            return IsValid(Entity(ragId))
-        end, function ()
-            RecheckBody(Entity(ragId), true)
-        end, "EDA_Support")
-    end
-end)
-
--- RagDeath V2 support --
-net.Receive("ragdeath_client", function ()
-    local entIndex = net.ReadInt(32)
-    local plyIndex = net.ReadInt(32)
-
-    local owner = Entity(plyIndex)
-
-    if owner ~= locPly then return end
-
-    if game.SinglePlayer() then
-        local ragdoll = Entity(entIndex)
-        RecheckBody(ragdoll, true)
-    else
-        tlouUtils.SetupLatencyChecker(function ()
-            return IsValid(Entity(entIndex))
-        end, function ()
-            RecheckBody(Entity(entIndex), true)
-        end, "RagDeath_Support")
-    end
+timer.Simple(0, function ()
+    -- Enhanced Death Animations support --
+    net.Receive("PlayerRag_StartDeathCam", function()
+        local ragId = net.ReadInt(32)
+    
+        if game.SinglePlayer() then
+            local ragdoll = Entity(ragId)
+            RecheckBody(ragdoll, true)
+        else
+            tlouUtils.SetupLatencyChecker(function ()
+                return IsValid(Entity(ragId))
+            end, function ()
+                RecheckBody(Entity(ragId), true)
+            end, "EDA_Support")
+        end
+    end)
+    
+    -- RagDeath V2 support --
+    net.Receive("ragdeath_client", function ()
+        local entIndex = net.ReadInt(32)
+        local plyIndex = net.ReadInt(32)
+    
+        local owner = Entity(plyIndex)
+    
+        if owner ~= locPly then return end
+    
+        if game.SinglePlayer() then
+            local ragdoll = Entity(entIndex)
+            RecheckBody(ragdoll, true)
+        else
+            tlouUtils.SetupLatencyChecker(function ()
+                return IsValid(Entity(entIndex))
+            end, function ()
+                RecheckBody(Entity(entIndex), true)
+            end, "RagDeath_Support")
+        end
+    end)
 end)
