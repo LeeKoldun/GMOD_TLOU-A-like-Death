@@ -15,8 +15,10 @@ local textsAlpha = 0
 local config = {
     shouldFollowAttacker = false,
     trackFace = false,
+    fadeScreen = true,
     customMessage = "",
     font = "DermaLarge",
+    camShakeAmount = 5,
 }
 
 ---@type Entity | nil
@@ -63,18 +65,24 @@ end
 local function DrawDeathScreen()
     if not showDS then return end
 
-    surface.SetDrawColor(0, 0, 0, 255)
-    surface.DrawRect(0, 0, ScrW(), ScrH())
+    if config.fadeScreen then
+        surface.SetDrawColor(0, 0, 0, 255)
+        surface.DrawRect(0, 0, ScrW(), ScrH())
+    end
 
     if not showTexts then return end
 
     textsAlpha = math.Clamp(textsAlpha + (FrameTime() * 20), 0, 200)
-    draw.SimpleText(
+    draw.SimpleTextOutlined(
         (config.customMessage ~= "" and config.customMessage) or "Press SPACE to respawn...", 
-        config.font, ScrW() / 2, ScrH() / 2, Color(255, 255, 255, textsAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-    draw.SimpleText(
+        config.font, ScrW() / 2, ScrH() / 2, Color(255, 255, 255, textsAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER,
+        2, Color(0, 0, 0, textsAlpha)
+    )
+    draw.SimpleTextOutlined(
         "Press CTRL to remove the death screen", 
-        config.font, ScrW() / 2, ScrH() * 0.95, Color(150, 150, 150, textsAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        config.font, ScrW() / 2, ScrH() * 0.95, Color(150, 150, 150, textsAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER,
+        2, Color(0, 0, 0, textsAlpha)
+    )
 
     if input.IsButtonDown(KEY_LCONTROL) then
         RemoveDeathScreen()
@@ -126,7 +134,7 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
     camAngle.r = deathData.roll
     
     deathData.camAngle = LerpAngle(10 * FrameTime(), deathData.camAngle, camAngle)
-    camAngle = tlouUtils.ApplyCamShake(deathData.camAngle, 2, 5)
+    camAngle = tlouUtils.ApplyCamShake(deathData.camAngle, 2, config.camShakeAmount)
 
     deathData.fov = Lerp(0.5 * FrameTime(), deathData.fov, 30)
 
@@ -149,9 +157,11 @@ end
 local function SetupDeathScreen(attacker)
     ResetVars()
 
+    config.fadeScreen = TD_CLCVAR_FADE_SCREEN:GetBool()
     config.trackFace = TD_CLCVAR_FACE_PLAYER:GetBool()
     config.customMessage = TD_CVAR_DEATHMESSAGE:GetString()
     config.shouldFollowAttacker = TD_CLCVAR_FOLLOW_ATTACKER:GetBool()
+    config.camShakeAmount = TD_CLCVAR_CAM_SHAKE_AMOUNT:GetFloat()
 
     local fontIndex = TD_CLCVAR_FONT:GetInt()
     if fontIndex == 1 then
@@ -224,13 +234,15 @@ net.Receive("TLOU_OnPlayerDeath", function()
     timer.Create("CL_TLOU_DeathSequence", TD_CVAR_DEATHOFFSET:GetFloat(), 1, function()
         if locPly:Alive() then return end
 
-        surface.PlaySound("tlou_death_sound.mp3")
+        if config.fadeScreen then
+            surface.PlaySound("tlou_death_sound.mp3")
+        end
         timer.Simple(1, function()
             if locPly:Alive() then return end
-
+            
             showDS = true
-            locPly:ConCommand("soundfade 100 99999 [0, 0.4]")
 
+            locPly:ConCommand("soundfade 100 99999 [0, 0.4]")
             timer.Simple(1.5, function()
                 if locPly:Alive() then return end
                 
@@ -279,45 +291,77 @@ end
 concommand.Add("fn_tlou_getmodelbones", GetModelBones)
 
 hook.Add("PopulateToolMenu", "TLOU_MenuSetup", function()
+
+    -- ---@param contents Panel | DPanel
+    -- ---@param category DCollapsibleCategory
+    -- local function ResizeCategory(contents, category)
+    --     -- Get inner children layout bounds
+    --     local _, childrenHeight = contents:GetChildSize() -- <<
+        
+    --     -- Total Height = Header Height + Children Height
+    --     local headerHeight = category:GetHeaderHeight() -- <<
+    --     local totalHeight = headerHeight + childrenHeight
+
+    --     -- Apply the new height
+    --     category:SetTall(totalHeight)
+    -- end
+
     ---@param pnl Panel | DForm
     ---@diagnostic disable-next-line: deprecated
     spawnmenu.AddToolMenuOption("Options", "Player", "tlou_options", "TLOU Death", nil, nil, function(pnl)
         -- Server
-        pnl:ControlHelp("\nSERVER")
-        pnl:CheckBox("Enable death", TD_CVAR_ENABLED:GetName())
-        pnl:NumSlider("Death offset (Def: 1)", TD_CVAR_DEATHOFFSET:GetName(), 0.1, 5, 1)
-        pnl:TextEntry("Death message", TD_CVAR_DEATHMESSAGE:GetName())
-        pnl:ControlHelp([[
+        local svPanel = vgui.Create("DForm", pnl)
+        svPanel:SetLabel("Server")
+
+        svPanel:CheckBox("Enable death", TD_CVAR_ENABLED:GetName())
+        svPanel:NumSlider("Death offset (Def: 1)", TD_CVAR_DEATHOFFSET:GetName(), 0.1, 5, 1)
+        svPanel:TextEntry("Death message", TD_CVAR_DEATHMESSAGE:GetName())
+        svPanel:ControlHelp([[
 Leave empty to use default
     - SPACEs also count as custom message
         ]])
 
         -- Client
-        pnl:ControlHelp("\nCLIENT")
-        
-        pnl:CheckBox("Should follow attacker", TD_CLCVAR_FOLLOW_ATTACKER:GetName())
-        pnl:ControlHelp("Should cam follow attacker if player's ragdoll is invalid")
+        local clPanel = vgui.Create("DForm", pnl)
+        clPanel:SetLabel("Client")
 
-        pnl:CheckBox("Try face player", TD_CLCVAR_FACE_PLAYER:GetName())
-        pnl:ControlHelp("Should cam try to face player on death\nWARNING: camera goofiness possibility")
+        clPanel:Help("Cam behaviour"):SetFont("DermaDefaultBold")
 
-        local fontSelect = pnl:ComboBox("Message font size", TD_CLCVAR_FONT:GetName())
+        clPanel:CheckBox("Should follow attacker", TD_CLCVAR_FOLLOW_ATTACKER:GetName())
+        clPanel:ControlHelp("Should cam follow attacker if player's ragdoll is invalid")
+
+        clPanel:CheckBox("Try face player", TD_CLCVAR_FACE_PLAYER:GetName())
+        clPanel:ControlHelp("Should cam try to face player on death\nWARNING: camera goofiness possibility")
+
+        clPanel:NumSlider("Cam shake amount", TD_CLCVAR_CAM_SHAKE_AMOUNT:GetName(), 0, 5, 1)
+
+        clPanel:Help("Death screen"):SetFont("DermaDefaultBold")
+
+        clPanel:CheckBox("Fade screen", TD_CLCVAR_FADE_SCREEN:GetName())
+        local fontSelect = clPanel:ComboBox("Message font size", TD_CLCVAR_FONT:GetName())
         fontSelect:SetSortItems(false)
         fontSelect:AddChoice("Default", 0)
         fontSelect:AddChoice("Large", 1)
         fontSelect:AddChoice("Largest", 2)
-        pnl:ControlHelp("Change if the death message appear do be small")
+        clPanel:ControlHelp("Change if the death message appear do be small")
 
-        pnl:CheckBox("Should use death voice", TD_CLCVAR_VOICE_ENABLED:GetName())
-        local voiceSelect = pnl:ComboBox("Voice type", TD_CLCVAR_VOICETYPE:GetName())
+        clPanel:Help("Voice"):SetFont("DermaDefaultBold")
+
+        clPanel:CheckBox("Should use death voice", TD_CLCVAR_VOICE_ENABLED:GetName())
+        local voiceSelect = clPanel:ComboBox("Voice type", TD_CLCVAR_VOICETYPE:GetName())
         voiceSelect:SetSortItems(false)
         voiceSelect:AddChoice("Auto", 0)
         voiceSelect:AddChoice("Male", 1)
         voiceSelect:AddChoice("Female", 2)
         voiceSelect:AddChoice("Combine", 3)
         voiceSelect:AddChoice("Zombie", 4)
-        
-        pnl:Button("Get model's bones (test function for now)", "fn_tlou_getmodelbones")
+
+        clPanel:Button("Get model's bones (test function for now)", "fn_tlou_getmodelbones")
+
+        -- Final setup
+        pnl:AddItem(svPanel)
+        pnl:AddItem(clPanel)
+        pnl:InvalidateLayout(true)
     end)
 end)
 
