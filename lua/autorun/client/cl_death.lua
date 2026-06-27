@@ -264,6 +264,20 @@ hook.Add("InitPostEntity", "TLOU_InitPly", function()
 end)
 
 -- Menu Setup --
+local function GetModelBones()
+    local model = locPly:GetModel()
+
+    if not model then return end
+
+    local info = util.GetModelInfo(model)
+    locPly:ChatPrint("Bones of model: " .. model)
+    for k, bone in pairs(info.Bones) do
+        locPly:ChatPrint(tostring(k - 1) .. "\t\t" .. tostring(bone.Name))
+    end
+end
+
+concommand.Add("fn_tlou_getmodelbones", GetModelBones)
+
 hook.Add("PopulateToolMenu", "TLOU_MenuSetup", function()
     ---@param pnl Panel | DForm
     ---@diagnostic disable-next-line: deprecated
@@ -302,9 +316,10 @@ Leave empty to use default
         voiceSelect:AddChoice("Female", 2)
         voiceSelect:AddChoice("Combine", 3)
         voiceSelect:AddChoice("Zombie", 4)
+        
+        pnl:Button("Get model's bones (test function for now)", "fn_tlou_getmodelbones")
     end)
 end)
-
 
 ------------------------
 -- Addon support zone --
