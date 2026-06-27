@@ -291,21 +291,6 @@ end
 concommand.Add("fn_tlou_getmodelbones", GetModelBones)
 
 hook.Add("PopulateToolMenu", "TLOU_MenuSetup", function()
-
-    -- ---@param contents Panel | DPanel
-    -- ---@param category DCollapsibleCategory
-    -- local function ResizeCategory(contents, category)
-    --     -- Get inner children layout bounds
-    --     local _, childrenHeight = contents:GetChildSize() -- <<
-        
-    --     -- Total Height = Header Height + Children Height
-    --     local headerHeight = category:GetHeaderHeight() -- <<
-    --     local totalHeight = headerHeight + childrenHeight
-
-    --     -- Apply the new height
-    --     category:SetTall(totalHeight)
-    -- end
-
     ---@param pnl Panel | DForm
     ---@diagnostic disable-next-line: deprecated
     spawnmenu.AddToolMenuOption("Options", "Player", "tlou_options", "TLOU Death", nil, nil, function(pnl)
