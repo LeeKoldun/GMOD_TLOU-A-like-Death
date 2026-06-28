@@ -9,9 +9,11 @@ TD_CVAR_DEATHOFFSET = CreateConVar(SV_CMD_PREFIX .. "offset", "1", {FCVAR_ARCHIV
 
 TD_CLCVAR_FOLLOW_ATTACKER = CreateClientConVar(CMD_PREFIX .. "follow_attacker", "0", true, true, "Should cam follow attacker if player's ragdoll is invalid", 0, 1)
 TD_CLCVAR_FACE_PLAYER = CreateClientConVar(CMD_PREFIX .. "track_face", "0", true, true, "Should cam try to face player on death", 0, 1)
-TD_CLCVAR_FONT = CreateClientConVar(CMD_PREFIX .. "font", "0", true, true, "The font size of the death messages", 0, 2)
-TD_CLCVAR_FADE_SCREEN = CreateClientConVar(CMD_PREFIX .. "fade_screen", "1", true, true, "Should play sound and fade screen on death", 0, 1)
 TD_CLCVAR_CAM_SHAKE_AMOUNT = CreateClientConVar(CMD_PREFIX .. "cam_shake_amount", "5", true, true, "How much cam shake should be applied", 0, 5)
+
+TD_CLCVAR_FADE_SCREEN = CreateClientConVar(CMD_PREFIX .. "fade_screen", "1", true, true, "Should play sound and fade screen on death", 0, 1)
+TD_CLCVAR_FONT = CreateClientConVar(CMD_PREFIX .. "font", "0", true, true, "The font size of the death messages", 0, 2)
+
 TD_CLCVAR_VOICE_ENABLED = CreateClientConVar(CMD_PREFIX .. "voice_enabled", "1", true, true, "Should death voice be enabled", 0, 1)
 TD_CLCVAR_VOICETYPE = CreateClientConVar(CMD_PREFIX .. "voicetype", "0", true, true, [[
     0 - auto
@@ -19,3 +21,21 @@ TD_CLCVAR_VOICETYPE = CreateClientConVar(CMD_PREFIX .. "voicetype", "0", true, t
     2 - female
     3 - combine
     4 - zombie]], 0, 4)
+
+TD_CLCVAR_USE_CUSTOM_BONE = CreateClientConVar(CMD_PREFIX .. "use_custom_bone", "0", true, true, "Should follow the specific bone set by the settings", 0, 1)
+TD_CLCVAR_BONE_TO_FOLLOW = CreateClientConVar(CMD_PREFIX .. "bone_to_follow", "0", true, true, "The selected bone to follow")
+
+-- TD_ALL_CONVARS = {
+--     TD_CVAR_ENABLED,
+--     TD_CVAR_DEATHMESSAGE,
+--     TD_CVAR_DEATHOFFSET,
+--     TD_CLCVAR_FOLLOW_ATTACKER,
+--     TD_CLCVAR_FACE_PLAYER,
+--     TD_CLCVAR_CAM_SHAKE_AMOUNT,
+--     TD_CLCVAR_FADE_SCREEN,
+--     TD_CLCVAR_FONT,
+--     TD_CLCVAR_VOICE_ENABLED,
+--     TD_CLCVAR_VOICETYPE,
+--     TD_CLCVAR_USE_CUSTOM_BONE,
+--     TD_CLCVAR_BONE_TO_FOLLOW,
+-- }

@@ -47,7 +47,8 @@ local LATENCY_CHECKER_PREFIX = "TLOU_LatencyChecker_"
 
 ---@class TlouUtils
 local TlouUtils = {
-    GetBoneId = function(body)
+    ---@param body Entity
+    GetBoneIdFromPrefered = function(body)
         if not body:IsValid() then return nil end
 
         for _, v in ipairs(PreferedBones) do

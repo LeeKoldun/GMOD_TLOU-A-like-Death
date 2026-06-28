@@ -15,10 +15,15 @@ local textsAlpha = 0
 local config = {
     shouldFollowAttacker = false,
     trackFace = false,
-    fadeScreen = true,
-    customMessage = "",
-    font = "DermaLarge",
     camShakeAmount = 5,
+
+    fadeScreen = true,
+    font = "DermaLarge",
+
+    customMessage = "",
+
+    useCustomBone = false,
+    boneToFollow = 0,
 }
 
 ---@type Entity | nil
@@ -148,9 +153,18 @@ local function CalculateDeathCam(ply, origin, angles, fov, znear, zfar)
     return view
 end
 
-local function SetBody()
-    body = (oldRecheckedBody ~= recheckedBody) and recheckedBody or locPly:GetRagdollEntity()
-    deathData.boneId = tlouUtils.GetBoneId(body)
+---@param ragdoll Entity | nil
+local function SetBody(ragdoll)
+    body = ragdoll
+        or (oldRecheckedBody ~= recheckedBody) and recheckedBody
+        or locPly:GetRagdollEntity()
+    if not body:IsValid() then
+        deathData.boneId = nil
+        return
+    end
+
+    deathData.boneId = config.useCustomBone and config.boneToFollow
+        or tlouUtils.GetBoneIdFromPrefered(body)
 end
 
 ---@param attacker Entity | NPC | Player | nil
@@ -163,6 +177,9 @@ local function SetupDeathScreen(attacker)
     config.shouldFollowAttacker = TD_CLCVAR_FOLLOW_ATTACKER:GetBool()
     config.camShakeAmount = TD_CLCVAR_CAM_SHAKE_AMOUNT:GetFloat()
 
+    config.useCustomBone = TD_CLCVAR_USE_CUSTOM_BONE:GetBool()
+    config.boneToFollow = TD_CLCVAR_BONE_TO_FOLLOW:GetInt()
+
     local fontIndex = TD_CLCVAR_FONT:GetInt()
     if fontIndex == 1 then
         config.font = "DermaLarger"
@@ -173,6 +190,14 @@ local function SetupDeathScreen(attacker)
     end
 
     print(oldRecheckedBody, recheckedBody)
+
+    if game.SinglePlayer() then
+        SetBody()
+    else
+        tlouUtils.SetupLatencyChecker(function ()
+            return locPly:GetRagdollEntity():IsValid()
+        end, SetBody, "GetDefaultRag")
+    end
 
     attacker = config.shouldFollowAttacker and attacker or nil
     deathData.attacker = attacker
@@ -192,14 +217,6 @@ local function SetupDeathScreen(attacker)
             IsValid(recheckedBody) and recheckedBody:GetClass() or nil
         }
     )
-
-    if game.SinglePlayer() then
-        SetBody()
-    else
-        tlouUtils.SetupLatencyChecker(function ()
-            return locPly:GetRagdollEntity():IsValid()
-        end, SetBody, "GetDefaultRag")
-    end
     
     deathData.camAngle = nil
     deathData.fov = 100
@@ -216,9 +233,8 @@ local function RecheckBody(newRagdoll, forceChange)
     if not newRagdoll:IsValid() then return end
     if IsValid(body) and not forceChange then return end
 
-    body = newRagdoll
+    SetBody(newRagdoll)
     recheckedBody = newRagdoll
-    deathData.boneId = tlouUtils.GetBoneId(newRagdoll)
 
     print("Set new body: " .. tostring(body) .. "\nForce changed: " .. tostring(forceChange))
 end
@@ -276,19 +292,6 @@ hook.Add("InitPostEntity", "TLOU_InitPly", function()
 end)
 
 -- Menu Setup --
-local function GetModelBones()
-    local model = locPly:GetModel()
-
-    if not model then return end
-
-    local info = util.GetModelInfo(model)
-    locPly:ChatPrint("Bones of model: " .. model)
-    for k, bone in pairs(info.Bones) do
-        locPly:ChatPrint(tostring(k - 1) .. "\t\t" .. tostring(bone.Name))
-    end
-end
-
-concommand.Add("fn_tlou_getmodelbones", GetModelBones)
 
 hook.Add("PopulateToolMenu", "TLOU_MenuSetup", function()
     ---@param pnl Panel | DForm
@@ -340,12 +343,75 @@ Leave empty to use default
         voiceSelect:AddChoice("Female", 2)
         voiceSelect:AddChoice("Combine", 3)
         voiceSelect:AddChoice("Zombie", 4)
+        
+        -- Bones selector
+        clPanel:Help("Body part selector"):SetFont("DermaDefaultBold")
 
-        clPanel:Button("Get model's bones (test function for now)", "fn_tlou_getmodelbones")
+        clPanel:CheckBox("Follow custom bone", TD_CLCVAR_USE_CUSTOM_BONE:GetName())
+        clPanel:ControlHelp("Use this option if your model has different bones from default Valve's definition\n(Aka cam's not following your model)")
+        
+        local listLabel = vgui.Create("DLabel", clPanel)
+        listLabel:SetFont("DermaDefaultBold")
+        listLabel:SetText("Model's not loaded")
+        listLabel:SetContentAlignment(5)
+        clPanel:AddItem(listLabel)
 
+        local bonesList = vgui.Create("DListView", clPanel)
+        bonesList:SetName("Model bones bonesList")
+
+        ---@param panel Panel
+        ---@param index number
+        ---@param row DListView_Line
+        ---@diagnostic disable-next-line: inject-field
+        bonesList.OnRowSelected = function (panel, index, row)
+            RunConsoleCommand(TD_CLCVAR_BONE_TO_FOLLOW:GetName(), index - 1)
+            notification.AddLegacy("Bone to follow set: " .. row:GetValue(2), NOTIFY_GENERIC, 3)
+            surface.PlaySound("ui/buttonclick.wav")
+        end
+
+        clPanel:AddItem(bonesList)
+
+        ---@diagnostic disable-next-line: undefined-field
+        bonesList:AddColumn("ID"):SetFixedWidth(40)
+        bonesList:AddColumn("Bone name")
+
+        local function GetModelBones()
+            bonesList:Clear()
+            
+            local model = locPly:GetModel()
+
+            if not model then return end
+
+            listLabel:SetText("Bones of: " .. model:Split('/')[#model:Split('/')])
+            local info = util.GetModelInfo(model)
+            for k, bone in pairs(info.Bones) do
+                bonesList:AddLine(k - 1, bone.Name)
+            end
+
+            bonesList:SetHeight(200)
+        end
+
+        concommand.Add("fn_tlou_getmodelbones", GetModelBones)
+        
+        clPanel:Button("Get model's bones", "fn_tlou_getmodelbones")
+        
         -- Final setup
         pnl:AddItem(svPanel)
         pnl:AddItem(clPanel)
+
+        -- -- Reset to defaults
+        -- local function ResetAll()
+        --     for k, cvar in pairs(TD_ALL_CONVARS) do
+        --         cvar:Revert()
+        --     end
+        --     notification.AddLegacy("TLOU Death setting are reset", NOTIFY_CLEANUP, 5)
+        --     surface.PlaySound("buttons/button19.wav")
+        -- end
+
+        -- concommand.Add("fn_tlou_resetall", ResetAll)
+        
+        -- pnl:Button("Reset to defaults", "fn_tlou_resetall"):SetFont("DermaDefaultBold")
+        
         pnl:InvalidateLayout(true)
     end)
 end)
