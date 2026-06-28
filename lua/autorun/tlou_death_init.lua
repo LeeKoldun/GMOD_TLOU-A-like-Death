@@ -3,6 +3,7 @@
 -------------------------
 
 -- Imports --
+AddCSLuaFile("tlou_alike_death/sh_convars.lua")
 AddCSLuaFile("tlou_alike_death/tlou_utils.lua")
 AddCSLuaFile("tlou_alike_death/client/cl_death.lua")
 
